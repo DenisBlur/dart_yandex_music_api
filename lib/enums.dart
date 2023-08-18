@@ -8,6 +8,6 @@ enum ChartSelect { russia, world }
 
 enum RadioFeedback {off, on, radioStarted, trackStarted, trackFinished, skip, getTracks}
 
-enum RadioDiversity {favorite, discover, popular, defaultDiversity}
-enum RadioMoodEnergy {active, fun, calm, sad, all}
-enum RadioLanguage {russian, any, withoutWords, notRussian}
+enum RadioDiversity {favorite, discover, popular, defaultDiversity, none}
+enum RadioMoodEnergy {active, fun, calm, sad, all, none}
+enum RadioLanguage {russian, any, withoutWords, notRussian, none}
