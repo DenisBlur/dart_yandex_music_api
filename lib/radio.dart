@@ -14,6 +14,7 @@ class Radio {
 
   Map<String, String> headers = {};
   String device = "";
+  String currentStation = "user:onyourwave";
 
   List<Track> sequence = [];
 
@@ -22,15 +23,15 @@ class Radio {
     this.device = device;
   }
 
-  Future<void> startRotorRadio(String station) async {
-    String stationInfo = await getStationInfo(station);
-    print(stationInfo);
-
+  Future<List<Track>> startRotorRadio({String station = "user:onyourwave"}) async {
+    currentStation = station;
+    sequence = await getRotorTracks();
+    return sequence;
   }
 
 
-  Future<String> getStationInfo(String station) async {
-    var stationInfo = await http.get(Uri.parse("$baseUrl/rotor/station/$station/info"), headers: headers);
+  Future<String> getStationInfo() async {
+    var stationInfo = await http.get(Uri.parse("$baseUrl/rotor/station/$currentStation/info"), headers: headers);
     return stationInfo.body;
   }
 
@@ -80,7 +81,7 @@ class Radio {
   }
 
   Future<void> sendRotorRadioFeedback(
-      {String station = "user:onyourwave", required RadioFeedback feedback, String trackId = "", double seconds = -0.5}) async {
+      {required RadioFeedback feedback, String trackId = "", String albumId = "", double seconds = -0.5}) async {
     DateTime times = DateTime.now();
 
     String params = "";
@@ -98,21 +99,46 @@ class Radio {
     }
 
     if (trackId.isNotEmpty) {
-      body["trackId"] = trackId;
+      body["trackId"] = "$trackId:$albumId";
     }
 
     if (seconds != -0.5) {
       body["totalPlayedSeconds"] = seconds;
     }
 
-    print(jsonEncode(body));
+    var trackFeedback = await http.post(Uri.parse("$baseUrl/rotor/station/$currentStation/feedback$params"),
+        headers: headers, body: jsonEncode(body));
 
-    // var trackFeedback = await http.post(Uri.parse("$baseUrl/rotor/session/$station/feedback$params"),
-    //     headers: headers, body: jsonEncode(body));
-    //
-    // print(trackFeedback.body);
+    print(feedback.name);
+
+    print(trackFeedback.body);
 
   }
+
+  Future<List<Track>> getRotorTracks() async {
+
+    String queue = "";
+
+    if(sequence.isNotEmpty) {
+      queue = "?queue=";
+      for (var element in sequence) {
+        queue = "$queue${element.id},";
+      }
+    }
+
+    var tracksResponse = await http.get(Uri.parse("$baseUrl/rotor/station/$currentStation/tracks?setting2=true$queue"),
+        headers: headers);
+
+    Session session = Session.fromJson(jsonDecode(tracksResponse.body));
+
+    batchId = session.result!.batchId!;
+
+    print("Get rotor tracks");
+
+    return session.result!.sequence!;
+
+  }
+
 
   Future<void> sendRadioFeedback(RadioFeedback feedback, String trackId, double seconds) async {
     DateTime times = DateTime.now();

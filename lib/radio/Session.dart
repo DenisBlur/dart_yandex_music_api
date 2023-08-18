@@ -165,7 +165,7 @@ class InvocationInfo {
   InvocationInfo.fromJson(dynamic json) {
     reqid = json['req-id'];
     hostname = json['hostname'];
-    execdurationmillis = json['exec-duration-millis'];
+    execdurationmillis = num.parse(json['exec-duration-millis']);
   }
   String? reqid;
   String? hostname;
