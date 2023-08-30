@@ -20,6 +20,7 @@ class RequestClient {
       if (kDebugMode) {
         print("Status Code: ${errorModel.error?.statusCode}");
         print(errorModel.toJson().toString());
+        print(response.request!.url);
       }
       return errorModel.toJson().toString();
     }
@@ -33,6 +34,7 @@ class RequestClient {
   Future<String> requestPost({required String url, required Map<String, dynamic> body}) async {
     if (kDebugMode) {
       print(jsonEncode(body));
+      print(url);
     }
     var response = await http.post(Uri.parse("$baseUrl$url"), headers: headers, body: jsonEncode(body));
     return _checkResponse(response);

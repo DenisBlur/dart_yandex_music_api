@@ -83,6 +83,7 @@ Tracks copyWith({  String? trackId,
     final map = <String, dynamic>{};
     map['trackId'] = trackId;
     map['albumId'] = albumId;
+    map['from'] = from;
     return map;
   }
 

@@ -16,12 +16,14 @@ import 'package:yam_api/landing/landing.dart';
 import 'package:yam_api/landing/new_playlists.dart';
 import 'package:yam_api/landing/new_releases.dart';
 import 'package:yam_api/playlist/playlist.dart';
+import 'package:yam_api/queue.dart';
 import 'package:yam_api/queue/queue_item.dart';
 import 'package:yam_api/queue/queues_list.dart';
 import 'package:yam_api/radio.dart';
 import 'package:yam_api/request_client.dart';
 import 'package:yam_api/search/search_sugges.dart';
 import 'package:yam_api/settings.dart';
+import 'package:yam_api/string_extension.dart';
 import 'package:yam_api/supplement/supplement.dart';
 import 'package:yam_api/track/track_lyric.dart';
 
@@ -37,6 +39,7 @@ import 'track/track_similar.dart';
 
 class Client {
   Radio radio = Radio();
+  Queue queue = Queue();
 
   String token = "";
   String language = "ru";
@@ -65,6 +68,7 @@ class Client {
     deviceHeaders = {'Authorization': 'OAuth $token', 'X-Yandex-Music-Device': '$device'};
 
     radio.init(headers, device!);
+    queue.init(headers, device!);
 
     return account.account != null;
   }
@@ -208,19 +212,6 @@ class Client {
 //     }
   }
 
-  Future<String> playAudio(String trackId) async {
-    ///Отправка трека на сервер
-    String currentTime = "${DateTime.now().toIso8601String()}Z";
-    String data = "?track-id=$trackId"
-        "&from=$device"
-        "&uid=$userId"
-        "&timestamp=$currentTime"
-        "&client-now=$currentTime";
-
-    var result = await RequestClient(headers: headers).requestPost(url: "/play-audio$data", body: {});
-    return result;
-  }
-
   Future<Album> getAlbumWithTracks(num albumId) async {
     ///Получение альбома по его уникальному идентификатору вместе с треками.
     var result = await RequestClient(headers: headers).requestGet("/albums/$albumId/with-tracks");
@@ -317,46 +308,6 @@ class Client {
     return returnList;
   }
 
-  Future<QueuesList> getQueuesList() async {
-    ///Получение всех очередей треков с разных устройств для синхронизации между ними
-    var result = await RequestClient(headers: deviceHeaders).requestGet("/queues");
-    return QueuesList.fromJson(jsonDecode(result)["result"]);
-  }
-
-  Future<QueueItem> getQueue({required String queueId}) async {
-    ///Получение информации об очереди треков и самих треков в ней
-    var result = await RequestClient(headers: deviceHeaders).requestGet("/queues/$queueId");
-    return QueueItem.fromJson(jsonDecode(result)["result"]);
-  }
-
-  Future<String> queueUpdatePosition({required String queueId, required int index}) async {
-    ///Установка текущего индекса проигрываемого трека в очереди треков
-    var result = await RequestClient(headers: deviceHeaders)
-        .requestPost(url: "/queues/$queueId/update-position?isInteractive=false&currentIndex=$index", body: {});
-    return result;
-  }
-
-  Future<String> createQueue(
-      {String id = "", required List<Track?>? tracks, required int currentIndex, String objectId = "", required ObjectType type}) async {
-    ///Создание новой очереди треков
-    List<Tracks> queueTracks = [];
-    for (var element in tracks!) {
-      queueTracks.add(Tracks(
-        albumId: element!.albums!.isEmpty ? "" : element.albums!.first.id.toString(),
-        trackId: element.id,
-      ));
-    }
-    var data = QueueItem(
-            id: id.isNotEmpty ? id : const Uuid().v1(),
-            initialContext: MainContext(id: userId, description: const Uuid().v1().toString(), login: "tokar-denis2017", type: type.name),
-            currentIndex: currentIndex,
-            modified: formatISOTime(DateTime.now()),
-            tracks: queueTracks)
-        .toJson();
-    var result = await RequestClient(headers: deviceHeaders).requestPost(url: "/queues", body: data);
-    return result;
-  }
-
   Future<List<dynamic>> getList({required ObjectType type, required List<String?>? list}) async {
     String params = list!.join(',');
     String add = type == ObjectType.playlist ? "/list" : "";
@@ -364,7 +315,6 @@ class Client {
     var result = await RequestClient(headers: headers).requestGet(url);
     var jsonResult = jsonDecode(result);
     List<dynamic> mapResult = jsonResult["result"];
-
     switch (type) {
       case ObjectType.playlist:
         List<MPlaylist>? returnList = [];

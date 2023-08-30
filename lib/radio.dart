@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:yam_api/radio/Session.dart';
+import 'package:yam_api/radio/session.dart';
 import 'package:yam_api/radio/setting2.dart';
 import 'package:yam_api/track/track.dart';
 
@@ -30,30 +30,27 @@ class Radio {
     return sequence;
   }
 
-
   Future<Setting2> getStationInfo() async {
     var stationInfo = await http.get(Uri.parse("$baseUrl/rotor/station/$currentStation/info"), headers: headers);
     return Setting2.fromJson(jsonDecode(stationInfo.body));
   }
 
-  Future<void> sendRotorStationSetting({
-    required RadioDiversity radioDiversity,
-    required RadioMoodEnergy radioMoodEnergy,
-    required RadioLanguage radioLanguage}) async {
+  Future<void> sendRotorStationSetting(
+      {required RadioDiversity radioDiversity, required RadioMoodEnergy radioMoodEnergy, required RadioLanguage radioLanguage}) async {
     String moodEnergy = radioMoodEnergy.name;
     String diversity = radioDiversity == RadioDiversity.defaultDiversity ? "default" : radioDiversity.name;
-    String language = radioLanguage == RadioLanguage.withoutWords ? "without-words" : radioLanguage == RadioLanguage.notRussian
-        ? "not-russian"
-        : radioLanguage.name;
+    String language = radioLanguage == RadioLanguage.withoutWords
+        ? "without-words"
+        : radioLanguage == RadioLanguage.notRussian
+            ? "not-russian"
+            : radioLanguage.name;
 
     String data = '{"moodEnergy": "$moodEnergy","diversity": "$diversity","language": "$language"}';
 
-    var stationInfo = await http.post(Uri.parse("$baseUrl/rotor/station/$currentStation/settings2"), headers: headers, body: data);
-    print(stationInfo.body);
+    await http.post(Uri.parse("$baseUrl/rotor/station/$currentStation/settings2"), headers: headers, body: data);
   }
 
-  Future<void> sendRotorRadioFeedback(
-      {required RadioFeedback feedback, String trackId = "", String albumId = "", double seconds = -0.5}) async {
+  Future<void> sendRotorRadioFeedback({required RadioFeedback feedback, String trackId = "", String albumId = "", double seconds = -0.5}) async {
     DateTime times = DateTime.now();
 
     String params = "";
@@ -78,38 +75,29 @@ class Radio {
       body["totalPlayedSeconds"] = seconds;
     }
 
-    var trackFeedback = await http.post(Uri.parse("$baseUrl/rotor/station/$currentStation/feedback$params"),
-        headers: headers, body: jsonEncode(body));
-
+    await http.post(Uri.parse("$baseUrl/rotor/station/$currentStation/feedback$params"), headers: headers, body: jsonEncode(body));
   }
 
   Future<List<Track>> getRotorTracks() async {
-
     String queue = "";
 
-    if(sequence.isNotEmpty) {
+    if (sequence.isNotEmpty) {
       queue = "?queue=";
       for (var element in sequence) {
         queue = "$queue${element.id},";
       }
     }
 
-    var tracksResponse = await http.get(Uri.parse("$baseUrl/rotor/station/$currentStation/tracks?setting2=true$queue"),
-        headers: headers);
+    var tracksResponse = await http.get(Uri.parse("$baseUrl/rotor/station/$currentStation/tracks?setting2=true$queue"), headers: headers);
 
     Session session = Session.fromJson(jsonDecode(tracksResponse.body));
 
     batchId = session.result!.batchId!;
 
     return session.result!.sequence!;
-
   }
 
-
-
   ///Второй способ работы с радио, может надо, может нет)
-
-
 
   Future<List<Track>> createRadioSession() async {
     DateTime times = DateTime.now();
@@ -127,16 +115,10 @@ class Radio {
         headers: headers,
         body: '{"event":{"type":"radioStarted","from":"radio-mobile-user-onyourwave-default","timestamp":"$timestamp"},"batchId":"$batchId"}');
 
-    print(batchId);
-    print(radioSessionId);
-
     if (radioStartFeedback.statusCode == 200) {
-      print(createSession.body);
       await sendRadioFeedback(RadioFeedback.trackStarted, sequence[0].id.toString(), 0);
       return sequence;
     }
-
-    print(createSession.body);
 
     return [];
   }
@@ -149,19 +131,15 @@ class Radio {
         '{"event":{"type":"${feedback.name}","timestamp":"$timestamp","trackId":"$trackId", "totalPlayedSeconds": $seconds},"batchId":"$batchId"}';
     String bodyStart = '{"event":{"type":"${feedback.name}","timestamp":"$timestamp","trackId":"$trackId"},"batchId":"$batchId"}';
 
-    var trackFeedback = await http.post(Uri.parse("$baseUrl/rotor/session/$radioSessionId/feedback"),
+    await http.post(Uri.parse("$baseUrl/rotor/session/$radioSessionId/feedback"),
         headers: headers, body: feedback == RadioFeedback.trackStarted ? bodyStart : bodySkip);
   }
 
   Future<List<Track>> getRadioTracks() async {
-    var radioTracks =
-    await http.post(Uri.parse("$baseUrl/rotor/session/$radioSessionId/tracks?setting2=true"), headers: headers,
-        body: '{"queue":[${sequence[0].id}], "settings2": true}');
+    var radioTracks = await http.post(Uri.parse("$baseUrl/rotor/session/$radioSessionId/tracks?setting2=true"),
+        headers: headers, body: '{"queue":[${sequence[0].id}], "settings2": true}');
     Session session = Session.fromJson(jsonDecode(radioTracks.body));
     sequence = session.result!.sequence!;
-
-    print(radioTracks.body);
-
     return sequence;
   }
 }
