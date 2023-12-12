@@ -27,7 +27,6 @@ class Queue {
     var queue = await http.get(Uri.parse("$baseUrl/queues"), headers: headers);
     QueuesList queuesList = QueuesList.fromJson(jsonDecode(queue.body)["result"]);
     queueId = queuesList.queues![0].id!;
-    currentQueueId = queuesList.queues![0].context!.id!;
     return queuesList.queues![0].context!.type == "radio";
   }
 
@@ -53,11 +52,13 @@ class Queue {
     return returnList;
   }
 
-  postQueue(List<Track?>? tracks,
-      String id,
-      type,
-      description,
-      int index,) async {
+  postQueue(
+    List<Track?>? tracks,
+    String id,
+    type,
+    description,
+    int index,
+  ) async {
     QueueCreate queueCreate = QueueCreate();
 
     queueCreate.tracks = [];
@@ -75,11 +76,13 @@ class Queue {
     queueCreate.isInteractive = true;
     queueCreate.context = InfoContext(description: description, id: id, type: type);
 
-    var queue = await http.post(Uri.parse("$baseUrl/queues"), headers: headers, body: jsonEncode(queueCreate.toJson()));
+    await http.post(Uri.parse("$baseUrl/queues"), headers: headers, body: jsonEncode(queueCreate.toJson()));
   }
 
-  updateQueue(int index,) async {
-    var queue = await http.post(
+  updateQueue(
+    int index,
+  ) async {
+    await http.post(
       Uri.parse("$baseUrl/queues/$queueId/update-position?currentIndex=$index&isInteractive=True"),
       headers: headers,
     );
@@ -88,12 +91,8 @@ class Queue {
   playAudio(String trackId, String albumId, double trackLengthSeconds) async {
     ///Отправка трека на сервер
     var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/play-audio'));
-    request.fields.addAll({
-      'track-id': trackId,
-      'timestamp': DateTime.now().oldTimestampYandex(),
-      'play-id': '',
-      'from': 'desktop_win-default-track-default'
-    });
+    request.fields
+        .addAll({'track-id': trackId, 'timestamp': DateTime.now().oldTimestampYandex(), 'play-id': '', 'from': 'desktop_win-default-track-default'});
 
     request.headers.addAll(headers);
 
@@ -102,6 +101,5 @@ class Queue {
     if (response.statusCode != 200) {
       print(response.reasonPhrase);
     }
-
   }
 }
